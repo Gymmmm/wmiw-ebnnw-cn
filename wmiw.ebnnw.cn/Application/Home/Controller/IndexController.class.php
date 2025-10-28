@@ -62,15 +62,30 @@ class IndexController extends CommonController {
             // 我的足迹【
             $goods = M('goods');
             $pidstr = M('member_footprint')->where(array('uid'=>$uid))->getField('pidstr');
-            // 字符串转换数组
-            $pidarr = unserialize($pidstr);
-            // 删除重复浏览的拍品
-            $pidarr = array_flip(array_flip($pidarr));
-            // 转换成字符串方便查询
-            $pidstr = implode(',', $pidarr);
-            $footprint = M('Auction')->where("pid in (".$pidstr.")")->where(array('hide'=>0))->order("field(pid,".$pidstr.")")->field('pid,gid,nowprice')->limit(50)->select();
-            foreach ($footprint as $ftkey => $ftvl) {
-                $footprint[$ftkey]['pictures']=$goods->where(array('id'=>$ftvl['gid']))->getField('pictures');
+            $footprint = array();
+            $pidarr = $this->safeUnserializeArray($pidstr);
+            if ($pidarr) {
+                // 删除重复浏览的拍品，同时过滤非法ID
+                $cleanPidarr = array();
+                foreach ($pidarr as $pidItem) {
+                    if (!is_scalar($pidItem)) {
+                        continue;
+                    }
+                    $pidItem = (int)$pidItem;
+                    if ($pidItem <= 0) {
+                        continue;
+                    }
+                    $cleanPidarr[] = $pidItem;
+                }
+                $pidarr = array_values(array_unique($cleanPidarr));
+                if ($pidarr) {
+                    // 转换成字符串方便查询
+                    $pidstr = implode(',', $pidarr);
+                    $footprint = M('Auction')->where("pid in (".$pidstr.")")->where(array('hide'=>0))->order("field(pid,".$pidstr.")")->field('pid,gid,nowprice')->limit(50)->select();
+                    foreach ($footprint as $ftkey => $ftvl) {
+                        $footprint[$ftkey]['pictures']=$goods->where(array('id'=>$ftvl['gid']))->getField('pictures');
+                    }
+                }
             }
             $this->footprint=$footprint;
             // 我的足迹】
@@ -228,6 +243,28 @@ class IndexController extends CommonController {
         $datas = array('gol'=>1,'openid'=>'123456','access_token'=>'654321','create'=>'auto');
         pre(sendPost($url, $datas));
     }
-    
+
+
+    private function safeUnserializeArray($value)
+    {
+        if (!is_string($value) || $value === '') {
+            return array();
+        }
+
+        $previousHandler = set_error_handler(function () {
+            return true;
+        });
+
+        try {
+            $data = unserialize($value);
+        } catch (\Exception $exception) {
+            $data = false;
+        }
+
+        restore_error_handler();
+
+        return is_array($data) ? $data : array();
+    }
+
 
 }
