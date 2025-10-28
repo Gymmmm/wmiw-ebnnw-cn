@@ -17,7 +17,6 @@
  * 主要是处理 onMessage onClose 
  */
 use \GatewayWorker\Lib\Gateway;
-use \GatewayWorker\Lib\Store;
 
 class Event
 {
@@ -29,12 +28,34 @@ class Event
    public static function onMessage($client_id, $message)
    {
         // debug
-        echo "client:{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']} gateway:{$_SERVER['GATEWAY_ADDR']}:{$_SERVER['GATEWAY_PORT']}  client_id:$client_id session:".json_encode($_SESSION)." onMessage:".$message."\n";
-        
+        self::log(sprintf(
+            'client:%s:%s gateway:%s:%s client_id:%s session:%s onMessage:%s',
+            $_SERVER['REMOTE_ADDR'],
+            $_SERVER['REMOTE_PORT'],
+            $_SERVER['GATEWAY_ADDR'],
+            $_SERVER['GATEWAY_PORT'],
+            $client_id,
+            json_encode($_SESSION),
+            $message
+        ));
+
         // 客户端传递的是json数据
         $message_data = json_decode($message, true);
-        if(!$message_data)
+        $jsonError = json_last_error();
+        if($jsonError !== JSON_ERROR_NONE)
         {
+            $errorMessage = 'JSON decode error code: '.$jsonError;
+            if(function_exists('json_last_error_msg'))
+            {
+                $errorMessage = 'JSON decode error: '.json_last_error_msg();
+            }
+            self::log($errorMessage);
+            return ;
+        }
+
+        if(empty($message_data['type']))
+        {
+            self::log('Missing message type, ignore.');
             return ;
         }
         
@@ -45,7 +66,6 @@ class Event
             case 'pong':
             // 客户端登录 message格式: {type:login, name:xx, room_id:1} ，添加到客户端，广播给所有客户端xx进入聊天室
             case 'login':
-            echo $message_data;
                 // 判断是否有房间号
                 if(!isset($message_data['room_id']))
                 {
@@ -55,9 +75,10 @@ class Event
                 // 把房间号昵称放到session中
                 $room_id = $message_data['room_id'];
                 $client_name = htmlspecialchars($message_data['client_name']);
+                $client_avatar = !empty($message_data['client_avatar']) ? $message_data['client_avatar'] : '';
                 $_SESSION['room_id'] = $room_id;
                 $_SESSION['client_name'] = $client_name;
-                $_SESSION['client_avatar'] = $message_data['client_avatar'];
+                $_SESSION['client_avatar'] = $client_avatar;
                 // 获取房间内所有用户列表 
                 $clients_list = Gateway::getClientInfoByGroup($room_id);
                 foreach($clients_list as $tmp_client_id=>$item)
@@ -67,7 +88,7 @@ class Event
                 $clients_list[$client_id] = $client_name;
                 
                 // 转播给当前房间的所有客户端，xx进入聊天室 message {type:login, client_id:xx, name:xx} 
-                $new_message = array('type'=>$message_data['type'], 'client_id'=>$client_id, 'client_name'=>htmlspecialchars($client_name),'client_avatar'=>$message_data['client_avatar'], 'time'=>date('Y-m-d H:i:s'));
+                $new_message = array('type'=>$message_data['type'], 'client_id'=>$client_id, 'client_name'=>htmlspecialchars($client_name),'client_avatar'=>$client_avatar, 'time'=>date('Y-m-d H:i:s'));
                 Gateway::sendToGroup($room_id, json_encode($new_message));
                 Gateway::joinGroup($client_id, $room_id);
                
@@ -137,7 +158,14 @@ class Event
    public static function onClose($client_id)
    {
        // debug
-       echo "client:{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']} gateway:{$_SERVER['GATEWAY_ADDR']}:{$_SERVER['GATEWAY_PORT']}  client_id:$client_id onClose:''\n";
+       self::log(sprintf(
+           'client:%s:%s gateway:%s:%s client_id:%s onClose',
+           $_SERVER['REMOTE_ADDR'],
+           $_SERVER['REMOTE_PORT'],
+           $_SERVER['GATEWAY_ADDR'],
+           $_SERVER['GATEWAY_PORT'],
+           $client_id
+       ));
        
        // 从房间的客户端列表中删除
        if(isset($_SESSION['room_id']))
@@ -148,4 +176,13 @@ class Event
        }
    }
   
+   protected static function log($message)
+   {
+       if (PHP_SAPI === 'cli') {
+           echo '['.date('Y-m-d H:i:s').'] '.$message."\n";
+           return;
+       }
+
+       error_log($message);
+   }
 }

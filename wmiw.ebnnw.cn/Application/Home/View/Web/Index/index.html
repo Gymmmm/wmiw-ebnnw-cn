@@ -6,20 +6,50 @@
 <link href="__CSS__/demo.css" rel="stylesheet" type="text/css" />
 <link href="__CSS__/filtstyle.css" rel="stylesheet" type="text/css">
 <link href="__CSS__/hmstyle.css" rel="stylesheet" type="text/css">
+<link href="__CSS__/modern-home.css" rel="stylesheet" type="text/css">
 <js href="__JS__/script.js"/>
-<body>
+<body class="home-modern">
     <div class="hmtop">
         <include file="Common:header_topnav" />
         <include file="Common:header_search" />
     </div>
     <!--轮播【 -->
-    <div class="banner">
+    <div class="banner home-hero">
+        <div class="slider-wrapper">
         <div class="am-slider am-slider-default scoll" data-am-flexslider id="demo-slider-0">
             <ul class="am-slides">{:showAdvPosition('banner','li')}</ul>
         </div>
+        </div>
         <script type="text/javascript">
-            (function() {
-                $('.am-slider').flexslider();
+            $(function() {
+                var $sliders = $('.am-slider');
+                if (!$sliders.length) {
+                    return;
+                }
+
+                // AmazeUI ships with flexslider, but some deployments strip the plugin.
+                // Guard the call so the homepage never hard-errors when the extension
+                // is missing or loaded late.
+                if ($.fn && $.fn.flexslider) {
+                    $sliders.each(function() {
+                        var $slider = $(this);
+                        if (!$slider.data('flexslider')) {
+                            $slider.flexslider();
+                        }
+                    });
+                    return;
+                }
+
+                if ($.AMUI && $.AMUI.plugin && $.isFunction($.AMUI.plugin('flexslider'))) {
+                    $sliders.attr('data-am-flexslider', '{}');
+                    return;
+                }
+
+                // Final defensive fallback: show the first slide to avoid blank hero.
+                $sliders.find('.am-slides').each(function() {
+                    var $slides = $(this).children();
+                    $slides.hide().first().show();
+                });
             });
         </script>
         <div class="clear"></div>   
@@ -142,40 +172,63 @@
         </div>
     </div>
         <!-- 列表开始 -->
-<!-- Notification Banner -->
-<div class="notification-banner">
-    <i class="am-icon-volume-up"></i>
-    <div class="notification-content">
-        <span>[成交消息] 恭喜 **** 成交一件 清康熙 五彩人物故事紋棒槌瓶</span>
-        <span>[系统公告] 网站将于今晚进行系统维护...</span>
-        <!-- Add more notifications here -->
-    </div>
-</div>
+        <section class="home-insights">
+            <div class="notification-banner" data-notification-marquee>
+                <div class="notification-icon"><i class="am-icon-volume-up"></i></div>
+                <div class="notification-track">
+                    <ul>
+                        <notempty name="newtop.list">
+                            <volist name="newtop.list" id="notice">
+                                <li>
+                                    <span class="tag">[{$notice.name}]</span>
+                                    <a target="_blank" href="{:U('Article/details',array('id'=>$notice['id']))}">{$notice.title}</a>
+                                </li>
+                            </volist>
+                        <else/>
+                            <li class="empty">敬请期待更多实时动态。</li>
+                        </notempty>
+                    </ul>
+                </div>
+            </div>
 
-<!-- News Tabs -->
-<div class="news-tabs">
-    <ul class="tabs-nav">
-        <li class="active"><a href="#tab-headlines">本站头条</a></li>
-        <li><a href="#tab-global">全球资讯</a></li>
-        <li><a href="#tab-about">关于我们</a></li>
-        <!-- Add more tabs if needed -->
-    </ul>
-    <div class="tabs-content">
-        <div id="tab-headlines" class="tab-pane active">
-            <!-- Headlines content goes here -->
-            <p>本站头条内容...</p>
-        </div>
-        <div id="tab-global" class="tab-pane">
-            <!-- Global news content goes here -->
-            <p>全球资讯内容...</p>
-        </div>
-        <div id="tab-about" class="tab-pane">
-            <!-- About us content goes here -->
-            <p>关于我们内容...</p>
-        </div>
-        <!-- Add more tab content panes if needed -->
-    </div>
-</div>
+            <div class="news-tabs" data-tabs>
+                <ul class="tabs-nav" role="tablist">
+                    <li class="active"><button type="button" class="is-active" data-tab-target="tab-headlines">本站头条</button></li>
+                    <li><button type="button" data-tab-target="tab-global">全球资讯</button></li>
+                    <li><button type="button" data-tab-target="tab-about">关于我们</button></li>
+                </ul>
+                <div class="tabs-content">
+                    <div id="tab-headlines" class="tab-pane active" role="tabpanel">
+                        <ul class="news-list">
+                            <notempty name="newtop.list">
+                                <volist name="newtop.list" id="headline">
+                                    <li>
+                                        <span class="badge">{$headline.name}</span>
+                                        <a target="_blank" href="{:U('Article/details',array('id'=>$headline['id']))}" class="news-link">{$headline.title}</a>
+                                    </li>
+                                </volist>
+                            <else/>
+                                <li class="news-empty">暂无头条内容，欢迎稍后再来关注精彩资讯。</li>
+                            </notempty>
+                        </ul>
+                    </div>
+                    <div id="tab-global" class="tab-pane" role="tabpanel">
+                        <div class="news-placeholder">
+                            <h4>全球资讯</h4>
+                            <p>精选国际艺术品行情、市场数据即将上线，敬请期待。</p>
+                            <a class="am-btn am-btn-primary" href="{:U('Article/index',array('cid'=>2))}">浏览资讯</a>
+                        </div>
+                    </div>
+                    <div id="tab-about" class="tab-pane" role="tabpanel">
+                        <div class="news-placeholder">
+                            <h4>关于我们</h4>
+                            <p>了解平台服务、保障体系与专家团队，畅享更高效的艺术品交易体验。</p>
+                            <a class="am-btn am-btn-secondary" href="{:U('Article/index',array('cid'=>1))}">查看更多</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <div class="shopMainbg">
             <div class="shopMain" id="shopmain">
@@ -513,10 +566,84 @@
                     <include file="Common:footer"/>
                 </div>
             </div>
-            
+
+        <div class="floating-quick-actions">
+            <a class="action" href="{:U('Seller/index')}">
+                <i class="am-icon-gavel"></i>
+                <span>我要卖</span>
+            </a>
+            <a class="action" href="{:U('Member/index')}">
+                <i class="am-icon-user"></i>
+                <span>个人中心</span>
+            </a>
+            <a class="action" href="{:U('Article/index',array('cid'=>3))}">
+                <i class="am-icon-graduation-cap"></i>
+                <span>新手指南</span>
+            </a>
+        </div>
+
 <include file="Common:query_links"/>
 <script type="text/javascript">
 $(function() {
+    $('[data-tabs]').each(function() {
+        var $container = $(this);
+        var $buttons = $container.find('.tabs-nav button');
+        var $panes = $container.find('.tab-pane');
+
+        $buttons.on('click', function() {
+            var $button = $(this);
+            var targetId = $button.data('tab-target');
+
+            $buttons.removeClass('is-active');
+            $container.find('.tabs-nav li').removeClass('active');
+            $button.addClass('is-active');
+            $button.closest('li').addClass('active');
+
+            $panes.removeClass('active');
+            if (targetId) {
+                $panes.filter('#' + targetId).addClass('active');
+            }
+        });
+    });
+
+    $('[data-notification-marquee]').each(function() {
+        var $root = $(this);
+        var $track = $root.find('.notification-track ul');
+        if (!$track.length) {
+            return;
+        }
+
+        var $items = $track.children();
+        if ($items.length < 2) {
+            return;
+        }
+
+        // 复制一份数据以实现无缝滚动
+        $track.append($items.clone());
+
+        var totalWidth = 0;
+        $track.children().each(function() {
+            totalWidth += $(this).outerWidth(true);
+        });
+
+        if (!totalWidth) {
+            return;
+        }
+
+        var offset = 0;
+        var speed = 0.5;
+
+        function step() {
+            offset -= speed;
+            if (-offset >= totalWidth / 2) {
+                offset = 0;
+            }
+            $track.css('transform', 'translateX(' + offset + 'px)');
+            (window.requestAnimationFrame || window.webkitRequestAnimationFrame || function(cb){ return setTimeout(cb, 16); })(step);
+        }
+
+        step();
+    });
 });
 </script>
 

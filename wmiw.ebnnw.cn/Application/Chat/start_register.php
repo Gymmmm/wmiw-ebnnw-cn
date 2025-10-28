@@ -17,7 +17,14 @@ use \GatewayWorker\Register;
 // 自动加载类
 require_once __DIR__ . '/../../Workerman/Autoloader.php';
 
-$register = new Register('text://0.0.0.0:1236');
+$config = require __DIR__ . '/config.php';
+$registerListen = sprintf(
+    '%s://%s:%d',
+    $config['register']['protocol'],
+    $config['register']['host'],
+    $config['register']['port']
+);
+$register = new Register($registerListen);
 
 // 如果不是在根目录启动，则运行runAll方法
 if(!defined('GLOBAL_START'))
