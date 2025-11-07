@@ -21,36 +21,74 @@
         </div>
         </div>
         <script type="text/javascript">
-            $(function() {
-                var $sliders = $('.am-slider');
-                if (!$sliders.length) {
-                    return;
+            (function(win) {
+                var $ = win.jQuery;
+
+                function revealFirstSlide(root) {
+                    var lists = root.querySelectorAll('.am-slider .am-slides');
+                    if (!lists.length) {
+                        return;
+                    }
+
+                    Array.prototype.forEach.call(lists, function(list) {
+                        var items = list.children;
+                        if (!items.length) {
+                            return;
+                        }
+
+                        Array.prototype.forEach.call(items, function(item, index) {
+                            if (index === 0) {
+                                item.style.display = 'block';
+                            } else {
+                                item.style.display = 'none';
+                            }
+                        });
+                    });
                 }
 
-                // AmazeUI ships with flexslider, but some deployments strip the plugin.
-                // Guard the call so the homepage never hard-errors when the extension
-                // is missing or loaded late.
-                if ($.fn && $.fn.flexslider) {
-                    $sliders.each(function() {
-                        var $slider = $(this);
-                        if (!$slider.data('flexslider')) {
-                            $slider.flexslider();
+                function onReady(cb) {
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', cb);
+                    } else {
+                        cb();
+                    }
+                }
+
+                if ($ && $.fn) {
+                    $(function() {
+                        var $sliders = $('.am-slider');
+                        if (!$sliders.length) {
+                            return;
                         }
+
+                        if ($.fn.flexslider) {
+                            $sliders.each(function() {
+                                var $slider = $(this);
+                                if (!$slider.data('flexslider')) {
+                                    $slider.flexslider();
+                                }
+                            });
+                            return;
+                        }
+
+                        if ($.AMUI && $.AMUI.plugin && $.isFunction($.AMUI.plugin('flexslider'))) {
+                            $sliders.attr('data-am-flexslider', '{}');
+                            return;
+                        }
+
+                        // Final defensive fallback: show the first slide to avoid blank hero.
+                        $sliders.find('.am-slides').each(function() {
+                            var $slides = $(this).children();
+                            $slides.hide().first().show();
+                        });
                     });
                     return;
                 }
 
-                if ($.AMUI && $.AMUI.plugin && $.isFunction($.AMUI.plugin('flexslider'))) {
-                    $sliders.attr('data-am-flexslider', '{}');
-                    return;
-                }
-
-                // Final defensive fallback: show the first slide to avoid blank hero.
-                $sliders.find('.am-slides').each(function() {
-                    var $slides = $(this).children();
-                    $slides.hide().first().show();
+                onReady(function() {
+                    revealFirstSlide(document);
                 });
-            });
+            })(window);
         </script>
         <div class="clear"></div>   
     </div>
@@ -152,20 +190,71 @@
                     <div class="advTip">{:showAdvPosition('headlines','span')}</div>
                 </div>
                 <script type="text/javascript">
-                    if ($(window).width() < 640) {
-                        function autoScroll(obj) {
-                            $(obj).find("ul").animate({
-                                marginTop: "-39px"
-                            }, 500, function() {
-                                $(this).css({
-                                    marginTop: "0px"
-                                }).find("li:first").appendTo(this);
-                            })
+                    (function(win) {
+                        var $ = win.jQuery;
+                        var MIN_WIDTH = 640;
+
+                        function startScroll(list) {
+                            if (!list) {
+                                return;
+                            }
+
+                            var items = list.querySelectorAll('li');
+                            if (items.length < 2) {
+                                return;
+                            }
+
+                            var itemHeight = items[0].offsetHeight || 39;
+                            var running = false;
+
+                            setInterval(function() {
+                                if (running) {
+                                    return;
+                                }
+                                running = true;
+
+                                list.style.transition = 'margin-top 0.5s';
+                                list.style.marginTop = '-' + itemHeight + 'px';
+
+                                setTimeout(function() {
+                                    var firstItem = list.querySelector('li');
+                                    if (firstItem) {
+                                        list.appendChild(firstItem);
+                                    }
+                                    list.style.transition = 'none';
+                                    list.style.marginTop = '0px';
+                                    void list.offsetHeight;
+                                    list.style.transition = 'margin-top 0.5s';
+                                    running = false;
+                                }, 520);
+                            }, 3000);
                         }
-                        $(function() {
-                            setInterval('autoScroll(".demo")', 3000);
-                        })
-                    }
+
+                        function init() {
+                            var list = document.querySelector('.demo ul');
+                            if (!list) {
+                                return;
+                            }
+                            startScroll(list);
+                        }
+
+                        if ($) {
+                            $(function() {
+                                if ($(win).width() < MIN_WIDTH) {
+                                    init();
+                                }
+                            });
+                            return;
+                        }
+
+                        if (win.innerWidth < MIN_WIDTH) {
+                            if (document.readyState === 'loading') {
+                                document.addEventListener('DOMContentLoaded', init);
+                            } else {
+                                init();
+                            }
+                        }
+                    })(window);
                 </script>
             </div>
             <div class="clear"></div>
@@ -584,67 +673,110 @@
 
 <include file="Common:query_links"/>
 <script type="text/javascript">
-$(function() {
-    $('[data-tabs]').each(function() {
-        var $container = $(this);
-        var $buttons = $container.find('.tabs-nav button');
-        var $panes = $container.find('.tab-pane');
+(function(win) {
+    var $ = win.jQuery;
 
-        $buttons.on('click', function() {
-            var $button = $(this);
-            var targetId = $button.data('tab-target');
+    function onReady(cb) {
+        if ($) {
+            $(cb);
+            return;
+        }
 
-            $buttons.removeClass('is-active');
-            $container.find('.tabs-nav li').removeClass('active');
-            $button.addClass('is-active');
-            $button.closest('li').addClass('active');
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', cb);
+        } else {
+            cb();
+        }
+    }
 
-            $panes.removeClass('active');
-            if (targetId) {
-                $panes.filter('#' + targetId).addClass('active');
+    function initTabs(container) {
+        var buttons = container.querySelectorAll('.tabs-nav button');
+        var panes = container.querySelectorAll('.tab-pane');
+        if (!buttons.length || !panes.length) {
+            return;
+        }
+
+        function activate(targetId, activeButton) {
+            Array.prototype.forEach.call(buttons, function(btn) {
+                btn.classList.toggle('is-active', btn === activeButton);
+                var li = btn.parentElement;
+                if (li) {
+                    li.classList.toggle('active', btn === activeButton);
+                }
+            });
+
+            if (!targetId) {
+                return;
             }
+
+            Array.prototype.forEach.call(panes, function(pane) {
+                pane.classList.toggle('active', pane.id === targetId);
+            });
+        }
+
+        Array.prototype.forEach.call(buttons, function(button) {
+            button.addEventListener('click', function() {
+                var targetId = button.getAttribute('data-tab-target');
+                activate(targetId, button);
+            });
         });
-    });
+    }
 
-    $('[data-notification-marquee]').each(function() {
-        var $root = $(this);
-        var $track = $root.find('.notification-track ul');
-        if (!$track.length) {
+    function initMarquee(root) {
+        var track = root.querySelector('.notification-track ul');
+        if (!track) {
             return;
         }
 
-        var $items = $track.children();
-        if ($items.length < 2) {
+        var items = Array.prototype.slice.call(track.children);
+        if (items.length < 2) {
             return;
         }
-
-        // 复制一份数据以实现无缝滚动
-        $track.append($items.clone());
 
         var totalWidth = 0;
-        $track.children().each(function() {
-            totalWidth += $(this).outerWidth(true);
+        items.forEach(function(item) {
+            totalWidth += item.offsetWidth;
         });
 
         if (!totalWidth) {
             return;
         }
 
+        var fragment = document.createDocumentFragment();
+        items.forEach(function(item) {
+            fragment.appendChild(item.cloneNode(true));
+        });
+        track.appendChild(fragment);
+
         var offset = 0;
         var speed = 0.5;
 
         function step() {
             offset -= speed;
-            if (-offset >= totalWidth / 2) {
+            if (-offset >= totalWidth) {
                 offset = 0;
             }
-            $track.css('transform', 'translateX(' + offset + 'px)');
-            (window.requestAnimationFrame || window.webkitRequestAnimationFrame || function(cb){ return setTimeout(cb, 16); })(step);
+            track.style.transform = 'translateX(' + offset + 'px)';
+            (win.requestAnimationFrame || win.webkitRequestAnimationFrame || function(cb) {
+                return setTimeout(cb, 16);
+            })(step);
         }
 
         step();
+    }
+
+    onReady(function() {
+        var tabContainers = document.querySelectorAll('[data-tabs]');
+        Array.prototype.forEach.call(tabContainers, function(container) {
+            initTabs(container);
+        });
+
+        var marquees = document.querySelectorAll('[data-notification-marquee]');
+        Array.prototype.forEach.call(marquees, function(root) {
+            initMarquee(root);
+        });
     });
-});
+})(window);
 </script>
 
 </body>
