@@ -6,88 +6,93 @@
 <link href="__CSS__/demo.css" rel="stylesheet" type="text/css" />
 <link href="__CSS__/filtstyle.css" rel="stylesheet" type="text/css">
 <link href="__CSS__/hmstyle.css" rel="stylesheet" type="text/css">
-<link href="__CSS__/modern-home.css" rel="stylesheet" type="text/css">
 <js href="__JS__/script.js"/>
-<body class="home-modern">
+<body>
     <div class="hmtop">
         <include file="Common:header_topnav" />
         <include file="Common:header_search" />
     </div>
     <!--轮播【 -->
-    <div class="banner home-hero">
-        <div class="slider-wrapper">
+    <div class="banner">
         <div class="am-slider am-slider-default scoll" data-am-flexslider id="demo-slider-0">
             <ul class="am-slides">{:showAdvPosition('banner','li')}</ul>
-        </div>
         </div>
         <script type="text/javascript">
             (function(win) {
                 var $ = win.jQuery;
 
-                function revealFirstSlide(root) {
-                    var lists = root.querySelectorAll('.am-slider .am-slides');
-                    if (!lists.length) {
+                function showFirstSlide(slider) {
+                    if (!slider) {
                         return;
                     }
 
-                    Array.prototype.forEach.call(lists, function(list) {
-                        var items = list.children;
-                        if (!items.length) {
-                            return;
-                        }
+                    var list = slider.querySelector('.am-slides');
+                    if (!list) {
+                        return;
+                    }
 
-                        Array.prototype.forEach.call(items, function(item, index) {
-                            if (index === 0) {
-                                item.style.display = 'block';
-                            } else {
-                                item.style.display = 'none';
-                            }
-                        });
-                    });
+                    var items = list.children;
+                    if (!items || !items.length) {
+                        return;
+                    }
+
+                    for (var i = 0; i < items.length; i++) {
+                        items[i].style.display = i === 0 ? 'block' : 'none';
+                    }
                 }
 
-                function onReady(cb) {
-                    if (document.readyState === 'loading') {
-                        document.addEventListener('DOMContentLoaded', cb);
-                    } else {
-                        cb();
+                function initialiseWithjQuery($sliders) {
+                    if (!$sliders || !$sliders.length) {
+                        return true;
+                    }
+
+                    if ($ && $.fn && $.fn.flexslider) {
+                        $sliders.each(function() {
+                            var $slider = $(this);
+                            if (!$slider.data('flexslider')) {
+                                $slider.flexslider();
+                            }
+                        });
+                        return true;
+                    }
+
+                    $sliders.each(function() {
+                        var $slider = $(this);
+                        var $items = $slider.find('.am-slides').children();
+                        if ($items.length) {
+                            $items.hide().first().show();
+                        }
+                    });
+
+                    return true;
+                }
+
+                function initSlider() {
+                    var sliders = document.querySelectorAll('.am-slider');
+                    if (!sliders.length) {
+                        return;
+                    }
+
+                    if ($ && $.fn) {
+                        initialiseWithjQuery($(sliders));
+                        return;
+                    }
+
+                    for (var i = 0; i < sliders.length; i++) {
+                        showFirstSlide(sliders[i]);
                     }
                 }
 
                 if ($ && $.fn) {
-                    $(function() {
-                        var $sliders = $('.am-slider');
-                        if (!$sliders.length) {
-                            return;
-                        }
-
-                        if ($.fn.flexslider) {
-                            $sliders.each(function() {
-                                var $slider = $(this);
-                                if (!$slider.data('flexslider')) {
-                                    $slider.flexslider();
-                                }
-                            });
-                            return;
-                        }
-
-                        if ($.AMUI && $.AMUI.plugin && $.isFunction($.AMUI.plugin('flexslider'))) {
-                            $sliders.attr('data-am-flexslider', '{}');
-                            return;
-                        }
-
-                        // Final defensive fallback: show the first slide to avoid blank hero.
-                        $sliders.find('.am-slides').each(function() {
-                            var $slides = $(this).children();
-                            $slides.hide().first().show();
-                        });
-                    });
+                    $(initSlider);
                     return;
                 }
 
-                onReady(function() {
-                    revealFirstSlide(document);
-                });
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initSlider);
+                } else {
+                    initSlider();
+                }
             })(window);
         </script>
         <div class="clear"></div>   
@@ -192,67 +197,101 @@
                 <script type="text/javascript">
                     (function(win) {
                         var $ = win.jQuery;
+                        var INTERVAL = 3000;
+                        var ANIMATION_MS = 500;
                         var MIN_WIDTH = 640;
 
-                        function startScroll(list) {
+                        function viewportWidth() {
+                            if (typeof win.innerWidth === 'number') {
+                                return win.innerWidth;
+                            }
+
+                            var doc = win.document;
+                            if (doc && doc.documentElement && doc.documentElement.clientWidth) {
+                                return doc.documentElement.clientWidth;
+                            }
+
+                            if (doc && doc.body && doc.body.clientWidth) {
+                                return doc.body.clientWidth;
+                            }
+
+                            return MIN_WIDTH;
+                        }
+
+                        function startJQueryScroll($list) {
+                            if (!$list || !$list.length) {
+                                return;
+                            }
+
+                            setInterval(function() {
+                                var $items = $list.children('li');
+                                if ($items.length < 2) {
+                                    return;
+                                }
+
+                                $list.animate({
+                                    marginTop: '-39px'
+                                }, ANIMATION_MS, function() {
+                                    $list.css('marginTop', '0px');
+                                    $list.append($items.first());
+                                });
+                            }, INTERVAL);
+                        }
+
+                        function startVanillaScroll(list) {
                             if (!list) {
                                 return;
                             }
 
-                            var items = list.querySelectorAll('li');
-                            if (items.length < 2) {
+                            var items = list.children;
+                            if (!items || items.length < 2) {
                                 return;
                             }
 
                             var itemHeight = items[0].offsetHeight || 39;
-                            var running = false;
+                            var animating = false;
 
                             setInterval(function() {
-                                if (running) {
+                                if (animating) {
                                     return;
                                 }
-                                running = true;
+                                animating = true;
 
                                 list.style.transition = 'margin-top 0.5s';
                                 list.style.marginTop = '-' + itemHeight + 'px';
 
                                 setTimeout(function() {
-                                    var firstItem = list.querySelector('li');
-                                    if (firstItem) {
-                                        list.appendChild(firstItem);
-                                    }
+                                    list.appendChild(list.firstElementChild);
                                     list.style.transition = 'none';
                                     list.style.marginTop = '0px';
                                     void list.offsetHeight;
-                                    list.style.transition = 'margin-top 0.5s';
-                                    running = false;
-                                }, 520);
-                            }, 3000);
+                                    animating = false;
+                                }, ANIMATION_MS + 20);
+                            }, INTERVAL);
                         }
 
-                        function init() {
+                        function initMarquee() {
+                            if (viewportWidth() >= MIN_WIDTH) {
+                                return;
+                            }
+
                             var list = document.querySelector('.demo ul');
                             if (!list) {
                                 return;
                             }
-                            startScroll(list);
-                        }
 
-                        if ($) {
-                            $(function() {
-                                if ($(win).width() < MIN_WIDTH) {
-                                    init();
-                                }
-                            });
-                            return;
-                        }
-
-                        if (win.innerWidth < MIN_WIDTH) {
-                            if (document.readyState === 'loading') {
-                                document.addEventListener('DOMContentLoaded', init);
-                            } else {
-                                init();
+                            if ($ && $.fn && $.fn.animate) {
+                                startJQueryScroll($(list));
+                                return;
                             }
+
+                            startVanillaScroll(list);
+                        }
+
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', initMarquee);
+                        } else {
+                            initMarquee();
                         }
                     })(window);
                 </script>
@@ -261,63 +300,40 @@
         </div>
     </div>
         <!-- 列表开始 -->
-        <section class="home-insights">
-            <div class="notification-banner" data-notification-marquee>
-                <div class="notification-icon"><i class="am-icon-volume-up"></i></div>
-                <div class="notification-track">
-                    <ul>
-                        <notempty name="newtop.list">
-                            <volist name="newtop.list" id="notice">
-                                <li>
-                                    <span class="tag">[{$notice.name}]</span>
-                                    <a target="_blank" href="{:U('Article/details',array('id'=>$notice['id']))}">{$notice.title}</a>
-                                </li>
-                            </volist>
-                        <else/>
-                            <li class="empty">敬请期待更多实时动态。</li>
-                        </notempty>
-                    </ul>
-                </div>
-            </div>
+<!-- Notification Banner -->
+<div class="notification-banner">
+    <i class="am-icon-volume-up"></i>
+    <div class="notification-content">
+        <span>[成交消息] 恭喜 **** 成交一件 清康熙 五彩人物故事紋棒槌瓶</span>
+        <span>[系统公告] 网站将于今晚进行系统维护...</span>
+        <!-- Add more notifications here -->
+    </div>
+</div>
 
-            <div class="news-tabs" data-tabs>
-                <ul class="tabs-nav" role="tablist">
-                    <li class="active"><button type="button" class="is-active" data-tab-target="tab-headlines">本站头条</button></li>
-                    <li><button type="button" data-tab-target="tab-global">全球资讯</button></li>
-                    <li><button type="button" data-tab-target="tab-about">关于我们</button></li>
-                </ul>
-                <div class="tabs-content">
-                    <div id="tab-headlines" class="tab-pane active" role="tabpanel">
-                        <ul class="news-list">
-                            <notempty name="newtop.list">
-                                <volist name="newtop.list" id="headline">
-                                    <li>
-                                        <span class="badge">{$headline.name}</span>
-                                        <a target="_blank" href="{:U('Article/details',array('id'=>$headline['id']))}" class="news-link">{$headline.title}</a>
-                                    </li>
-                                </volist>
-                            <else/>
-                                <li class="news-empty">暂无头条内容，欢迎稍后再来关注精彩资讯。</li>
-                            </notempty>
-                        </ul>
-                    </div>
-                    <div id="tab-global" class="tab-pane" role="tabpanel">
-                        <div class="news-placeholder">
-                            <h4>全球资讯</h4>
-                            <p>精选国际艺术品行情、市场数据即将上线，敬请期待。</p>
-                            <a class="am-btn am-btn-primary" href="{:U('Article/index',array('cid'=>2))}">浏览资讯</a>
-                        </div>
-                    </div>
-                    <div id="tab-about" class="tab-pane" role="tabpanel">
-                        <div class="news-placeholder">
-                            <h4>关于我们</h4>
-                            <p>了解平台服务、保障体系与专家团队，畅享更高效的艺术品交易体验。</p>
-                            <a class="am-btn am-btn-secondary" href="{:U('Article/index',array('cid'=>1))}">查看更多</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+<!-- News Tabs -->
+<div class="news-tabs">
+    <ul class="tabs-nav">
+        <li class="active"><a href="#tab-headlines">本站头条</a></li>
+        <li><a href="#tab-global">全球资讯</a></li>
+        <li><a href="#tab-about">关于我们</a></li>
+        <!-- Add more tabs if needed -->
+    </ul>
+    <div class="tabs-content">
+        <div id="tab-headlines" class="tab-pane active">
+            <!-- Headlines content goes here -->
+            <p>本站头条内容...</p>
+        </div>
+        <div id="tab-global" class="tab-pane">
+            <!-- Global news content goes here -->
+            <p>全球资讯内容...</p>
+        </div>
+        <div id="tab-about" class="tab-pane">
+            <!-- About us content goes here -->
+            <p>关于我们内容...</p>
+        </div>
+        <!-- Add more tab content panes if needed -->
+    </div>
+</div>
 
         <div class="shopMainbg">
             <div class="shopMain" id="shopmain">
@@ -655,127 +671,69 @@
                     <include file="Common:footer"/>
                 </div>
             </div>
-
-        <div class="floating-quick-actions">
-            <a class="action" href="{:U('Seller/index')}">
-                <i class="am-icon-gavel"></i>
-                <span>我要卖</span>
-            </a>
-            <a class="action" href="{:U('Member/index')}">
-                <i class="am-icon-user"></i>
-                <span>个人中心</span>
-            </a>
-            <a class="action" href="{:U('Article/index',array('cid'=>3))}">
-                <i class="am-icon-graduation-cap"></i>
-                <span>新手指南</span>
-            </a>
-        </div>
-
+            
 <include file="Common:query_links"/>
 <script type="text/javascript">
 (function(win) {
-    var $ = win.jQuery;
-
-    function onReady(cb) {
-        if ($) {
-            $(cb);
+    function ready(callback) {
+        if (typeof win.jQuery === 'function' && win.jQuery.fn) {
+            win.jQuery(callback);
             return;
         }
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', cb);
+            document.addEventListener('DOMContentLoaded', callback);
         } else {
-            cb();
+            callback();
         }
     }
 
-    function initTabs(container) {
-        var buttons = container.querySelectorAll('.tabs-nav button');
-        var panes = container.querySelectorAll('.tab-pane');
-        if (!buttons.length || !panes.length) {
+    function initTabs() {
+        var tabContainer = document.querySelector('.news-tabs');
+        if (!tabContainer) {
             return;
         }
 
-        function activate(targetId, activeButton) {
-            Array.prototype.forEach.call(buttons, function(btn) {
-                btn.classList.toggle('is-active', btn === activeButton);
-                var li = btn.parentElement;
-                if (li) {
-                    li.classList.toggle('active', btn === activeButton);
+        var navLinks = tabContainer.querySelectorAll('.tabs-nav a');
+        var panes = tabContainer.querySelectorAll('.tab-pane');
+        if (!navLinks.length || !panes.length) {
+            return;
+        }
+
+        function activate(targetId, activeLink) {
+            for (var i = 0; i < navLinks.length; i++) {
+                var link = navLinks[i];
+                var parent = link.parentNode;
+                var isActive = link === activeLink;
+
+                if (parent && parent.classList) {
+                    parent.classList.toggle('active', isActive);
                 }
-            });
 
-            if (!targetId) {
-                return;
+                if (link.classList) {
+                    link.classList.toggle('active', isActive);
+                }
             }
 
-            Array.prototype.forEach.call(panes, function(pane) {
+            for (var j = 0; j < panes.length; j++) {
+                var pane = panes[j];
+                if (!pane.classList) {
+                    continue;
+                }
                 pane.classList.toggle('active', pane.id === targetId);
-            });
-        }
-
-        Array.prototype.forEach.call(buttons, function(button) {
-            button.addEventListener('click', function() {
-                var targetId = button.getAttribute('data-tab-target');
-                activate(targetId, button);
-            });
-        });
-    }
-
-    function initMarquee(root) {
-        var track = root.querySelector('.notification-track ul');
-        if (!track) {
-            return;
-        }
-
-        var items = Array.prototype.slice.call(track.children);
-        if (items.length < 2) {
-            return;
-        }
-
-        var totalWidth = 0;
-        items.forEach(function(item) {
-            totalWidth += item.offsetWidth;
-        });
-
-        if (!totalWidth) {
-            return;
-        }
-
-        var fragment = document.createDocumentFragment();
-        items.forEach(function(item) {
-            fragment.appendChild(item.cloneNode(true));
-        });
-        track.appendChild(fragment);
-
-        var offset = 0;
-        var speed = 0.5;
-
-        function step() {
-            offset -= speed;
-            if (-offset >= totalWidth) {
-                offset = 0;
             }
-            track.style.transform = 'translateX(' + offset + 'px)';
-            (win.requestAnimationFrame || win.webkitRequestAnimationFrame || function(cb) {
-                return setTimeout(cb, 16);
-            })(step);
         }
 
-        step();
+        for (var i = 0; i < navLinks.length; i++) {
+            navLinks[i].addEventListener('click', function(event) {
+                event.preventDefault();
+                var targetId = this.getAttribute('href').replace('#', '');
+                activate(targetId, this);
+            });
+        }
     }
 
-    onReady(function() {
-        var tabContainers = document.querySelectorAll('[data-tabs]');
-        Array.prototype.forEach.call(tabContainers, function(container) {
-            initTabs(container);
-        });
-
-        var marquees = document.querySelectorAll('[data-notification-marquee]');
-        Array.prototype.forEach.call(marquees, function(root) {
-            initMarquee(root);
-        });
-    });
+    ready(initTabs);
 })(window);
 </script>
 
