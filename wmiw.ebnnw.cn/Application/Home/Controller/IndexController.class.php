@@ -66,22 +66,45 @@ class IndexController extends CommonController {
             $pidarr = $this->safeUnserializeArray($pidstr);
             if ($pidarr) {
                 // 删除重复浏览的拍品，同时过滤非法ID
-                $cleanPidarr = array();
+                $deduplicatedMap = array();
                 foreach ($pidarr as $pidItem) {
                     if (!is_scalar($pidItem)) {
                         continue;
                     }
+
                     $pidItem = (int)$pidItem;
                     if ($pidItem <= 0) {
                         continue;
                     }
-                    $cleanPidarr[] = $pidItem;
+
+                    if (isset($deduplicatedMap[$pidItem])) {
+                        continue;
+                    }
+
+                    $deduplicatedMap[$pidItem] = $pidItem;
                 }
-                $pidarr = array_values(array_unique($cleanPidarr));
-                if ($pidarr) {
-                    // 转换成字符串方便查询
-                    $pidstr = implode(',', $pidarr);
-                    $footprint = M('Auction')->where("pid in (".$pidstr.")")->where(array('hide'=>0))->order("field(pid,".$pidstr.")")->field('pid,gid,nowprice')->limit(50)->select();
+
+                $deduplicated = array_values($deduplicatedMap);
+
+                // 只保留最近的50条足迹（原始顺序中靠后的认为是最新的记录）
+                if (count($deduplicated) > 50) {
+                    $deduplicated = array_slice($deduplicated, -50, 50);
+                }
+
+                if ($deduplicated) {
+                    $pidOrder = implode(',', $deduplicated);
+                    $auctionWhere = array(
+                        'hide' => 0,
+                        'pid'  => array('in', $deduplicated),
+                    );
+
+                    $footprint = M('Auction')
+                        ->where($auctionWhere)
+                        ->order("field(pid,".$pidOrder.")")
+                        ->field('pid,gid,nowprice')
+                        ->limit(50)
+                        ->select();
+
                     foreach ($footprint as $ftkey => $ftvl) {
                         $footprint[$ftkey]['pictures']=$goods->where(array('id'=>$ftvl['gid']))->getField('pictures');
                     }
@@ -251,7 +274,8 @@ class IndexController extends CommonController {
             return array();
         }
 
-        $previousHandler = set_error_handler(function () {
+        $data = false;
+        set_error_handler(function () {
             return true;
         });
 
@@ -263,7 +287,11 @@ class IndexController extends CommonController {
 
         restore_error_handler();
 
-        return is_array($data) ? $data : array();
+        if (!is_array($data)) {
+            return array();
+        }
+
+        return $data;
     }
 
 
